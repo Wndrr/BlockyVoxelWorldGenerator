@@ -23,7 +23,7 @@ public class WorldGenerator : MonoBehaviour
         for (var y = 0; y < settings.generationRadiusInChunks; y++)
         for (var z = 0; z < settings.generationRadiusInChunks; z++)
         {
-            chunks[x, y, z] = new Chunk(settings, new Vector3(x, y, z));
+            chunks[x, y, z] = new Chunk(new Vector3(x, y, z), this.gameObject, settings);
             yield return null;
         }
     }
@@ -64,6 +64,12 @@ public class WorldGenerator : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.R))
         {
+            for (var x = 0; x < chunks.GetLength(0); x++)
+            for (var y = 0; y < chunks.GetLength(1); y++)
+            for (var z = 0; z < chunks.GetLength(2); z++)
+            {
+             Destroy(chunks[x, y, z].gameObject);   
+            }
             chunks = new Chunk[settings.generationRadiusInChunks, settings.generationRadiusInChunks, settings.generationRadiusInChunks];
             StartCoroutine(nameof(GenerateChunks));
         }
