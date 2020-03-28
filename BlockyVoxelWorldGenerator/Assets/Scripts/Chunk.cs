@@ -17,8 +17,6 @@ public class Chunk
         };
         gameObject.transform.parent = parent.transform;
         CreateVoxels(settings);
-        MergeVoxelMeshes();
-        gameObject.transform.position = identifier * settings.voxelsPerChunkSide / settings.blocksPerMeter;
     }
 
     private void CreateVoxels(WorldGeneratorSettings settings)
@@ -29,8 +27,19 @@ public class Chunk
         for (var z = 0; z < settings.voxelsPerChunkSide; z++)
         {
             var localIdentifier = new Vector3(x, y, z);
-            Voxels[x, y, z] = new Voxel(localIdentifier, gameObject.transform.position, gameObject, settings);
+            Voxels[x, y, z] = new Voxel(localIdentifier, gameObject.transform.position, gameObject, this, settings);
         }
+
+    }
+
+    public void CreateMesh()
+    {
+        foreach (var voxel in Voxels)
+        {
+            voxel.CreateMesh();
+        }
+        MergeVoxelMeshes();
+        gameObject.transform.position = Identifier * _settings.voxelsPerChunkSide / _settings.blocksPerMeter;
     }
 
     private void MergeVoxelMeshes()
