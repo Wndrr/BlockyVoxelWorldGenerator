@@ -30,6 +30,7 @@ public class WorldGenerator : MonoBehaviour
         foreach (var chunk in Chunks)
         {
             chunk.CreateMesh();
+            yield return null;
         }
     }
 

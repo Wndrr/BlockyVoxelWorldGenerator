@@ -6,11 +6,13 @@ public class Chunk
     private readonly WorldGeneratorSettings _settings;
     public Voxel[,,] Voxels;
     public GameObject gameObject;
+    private Vector3 _chunkPosition;
 
     public Chunk(Vector3 identifier, GameObject parent, WorldGeneratorSettings settings)
     {
         Identifier = identifier;
         _settings = settings;
+        _chunkPosition = Identifier * _settings.voxelsPerChunkSide / _settings.blocksPerMeter;
         gameObject = new GameObject
         {
             name = $"Chunk - {identifier.ToString()}"
@@ -27,7 +29,7 @@ public class Chunk
         for (var z = 0; z < settings.voxelsPerChunkSide; z++)
         {
             var localIdentifier = new Vector3(x, y, z);
-            Voxels[x, y, z] = new Voxel(localIdentifier, gameObject.transform.position, gameObject, this, settings);
+            Voxels[x, y, z] = new Voxel(localIdentifier, _chunkPosition, gameObject, this, settings);
         }
 
     }
@@ -39,7 +41,8 @@ public class Chunk
             voxel.CreateMesh();
         }
         MergeVoxelMeshes();
-        gameObject.transform.position = Identifier * _settings.voxelsPerChunkSide / _settings.blocksPerMeter;
+        gameObject.transform.position = _chunkPosition;
+        gameObject.transform.localScale /= _settings.blocksPerMeter;
     }
 
     private void MergeVoxelMeshes()

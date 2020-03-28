@@ -41,6 +41,15 @@ public class Voxel
         _parentChunk = parentChunk;
         _settings = settings;
         CreateGameObject(localIdentifier, chunkPosition, parent);
+        var worldPosition = localIdentifier / _settings.blocksPerMeter + chunkPosition;
+        var perlinNoise = Mathf.PerlinNoise(worldPosition.x * .2f, worldPosition.z * .2f);
+        var heightMap = Noise.Map(0, _settings.maxHeight, 0, 1, perlinNoise);
+        if (heightMap < worldPosition.y)
+            isSolid = false;
+        else
+        {
+            isSolid = true;
+        }
     }
 
     private void CreateGameObject(Vector3 localIdentifier, Vector3 chunkPosition, GameObject parent)
@@ -56,6 +65,9 @@ public class Voxel
 
     public void CreateMesh()
     {
+        if (!isSolid)
+            return;
+
         foreach (var side in _sides)
         {
             if (!IsVoxelWithThisIdentifierSolid(LocalIdentifier + side.Value))
