@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -26,26 +27,26 @@ public class WorldGenerator : MonoBehaviour
     void Start()
     {
         Chunks = new Dictionary<Vector3Int, Chunk>(settings.generationRadiusInChunks * 2 * 3);
-        StartCoroutine(RegenerateChunks());
+        RegenerateChunks();
     }
 
-    private IEnumerator GenerateChunkAndAdjacentChunks(Vector3Int identifier, int remainingDistance)
+    private void GenerateChunkAndAdjacentChunks(Vector3Int identifier, int remainingDistance)
     {
         if (!Chunks.ContainsKey(identifier) && identifier.y >= 0)
             Chunks.Add(identifier, new Chunk(identifier, this.gameObject, settings));
 
         if (remainingDistance <= 0)
-            yield break;
+            return;
 
         foreach (var identifierOfAdjacentChunkToGenerate in _directions.Select(direction => identifier + direction))
         {
-            StartCoroutine(GenerateChunkAndAdjacentChunks(identifierOfAdjacentChunkToGenerate.ToVector3Int(), remainingDistance - 1));
+            GenerateChunkAndAdjacentChunks(identifierOfAdjacentChunkToGenerate.ToVector3Int(), remainingDistance - 1);
         }
     }
 
     private IEnumerator GenerateChunks()
     {
-        yield return GenerateChunkAndAdjacentChunks(Vector3Int.zero, settings.generationRadiusInChunks - 1);
+       GenerateChunkAndAdjacentChunks(Vector3Int.zero, settings.generationRadiusInChunks - 1);
 
         foreach (var chunk in Chunks)
         {
@@ -90,25 +91,19 @@ public class WorldGenerator : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.R))
         {
-            StopCoroutine(nameof(GenerateChunks));
-            StopCoroutine(nameof(GenerateChunkAndAdjacentChunks));
-            StartCoroutine(RegenerateChunks());
+            RegenerateChunks();
         }
     }
 
-    private IEnumerator RegenerateChunks()
+    private void RegenerateChunks()
     {
         foreach (var chunk in Chunks)
         {
             Destroy(chunk.Value.gameObject);
         }
-
-        yield return null;
-
+        
         Chunks.Clear();
-        yield return null;
 
-        Chunks = new Dictionary<Vector3Int, Chunk>(settings.generationRadiusInChunks * 2 * 3);
-        StartCoroutine(nameof(GenerateChunks));
+        StartCoroutine(GenerateChunks());
     }
 }

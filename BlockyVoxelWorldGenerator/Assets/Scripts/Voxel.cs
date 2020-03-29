@@ -12,7 +12,11 @@ public class Voxel
     public readonly Vector3 LocalIdentifier;
     private readonly Chunk _parentChunk;
     private readonly WorldGeneratorSettings _settings;
-    public GameObject gameObject;
+
+    public Vector3[][] Vertices { get; set; }
+    public Vector3[][] Normals { get; set; }
+    public Vector2[][] Uv { get; set; }
+    public int[][] Triangles { get; set; }
 
     private readonly Dictionary<Cubeside, Vector3> _sides = new Dictionary<Cubeside, Vector3>
     {
@@ -41,27 +45,21 @@ public class Voxel
         LocalIdentifier = localIdentifier;
         _parentChunk = parentChunk;
         _settings = settings;
-        CreateGameObject(localIdentifier, chunkPosition, parent);
+        Vertices = new Vector3[6][];
+        Normals = new Vector3[6][];
+        Uv = new Vector2[6][];
+        Triangles = new int[6][];
         var worldPosition = localIdentifier / _settings.blocksPerMeter + chunkPosition;
-        var perlinNoise = Mathf.PerlinNoise(worldPosition.x * .02f + 10000, worldPosition.z * .02f + 10000); 
-        var heightMap = Noise.Map(0, _settings.maxHeightInChunks * (float)settings.voxelsPerChunkSide / _settings.blocksPerMeter, 0, 1, perlinNoise);
+
+        var perlinNoise = Mathf.PerlinNoise(worldPosition.x * .02f + 10000, worldPosition.z * .02f + 10000);
+
+        var heightMap = Noise.Map(0, _settings.maxHeightInChunks * (float) settings.voxelsPerChunkSide / _settings.blocksPerMeter, 0, 1, perlinNoise);
         if (heightMap < worldPosition.y)
             isSolid = false;
         else
         {
             isSolid = true;
         }
-    }
-
-    private void CreateGameObject(Vector3 localIdentifier, Vector3 chunkPosition, GameObject parent)
-    {
-        gameObject = new GameObject
-        {
-            name = $"Voxel - {localIdentifier.ToString()}"
-        };
-        gameObject.transform.parent = parent.transform;
-        gameObject.transform.position = (localIdentifier / _settings.blocksPerMeter) + chunkPosition;
-        gameObject.transform.localScale = Vector3.one / _settings.blocksPerMeter;
     }
 
     public void CreateMesh()
@@ -159,11 +157,6 @@ public class Voxel
 
     private void CreateFace(Cubeside sideName, Vector3 sideDirection)
     {
-        var mesh = new Mesh
-        {
-            name = "ScriptedMesh" + sideName
-        };
-
         Vector3[] vertices;
         var normals = new[] {sideDirection, sideDirection, sideDirection, sideDirection};
         var triangles = new[] {3, 1, 0, 3, 2, 1};
@@ -203,19 +196,11 @@ public class Voxel
                 throw new ArgumentOutOfRangeException(nameof(sideName), sideName, null);
         }
 
-
-        mesh.vertices = vertices;
-        mesh.normals = normals;
-        mesh.uv = uvs;
-        mesh.triangles = triangles;
-
-        mesh.RecalculateBounds();
-
-        var quad = new GameObject("Quad");
-        quad.transform.parent = gameObject.transform;
-        quad.transform.position = LocalIdentifier;
-
-        var meshFilter = quad.AddComponent<MeshFilter>();
-        meshFilter.mesh = mesh;
+        vertices = vertices.Select(v => v + (LocalIdentifier)).ToArray();
+        var index = (int) sideName;
+        Vertices[index] = vertices;
+        Normals[index] = normals;
+        Uv[index] = uvs;
+        Triangles[index] = triangles;
     }
 }

@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using UnityEngine;
 
 public class Chunk
 {
@@ -36,10 +39,10 @@ public class Chunk
 
     public void CreateMesh()
     {
-        foreach (var voxel in Voxels)
-        {
-            voxel.CreateMesh();
-        }
+        var tasks = new List<Task>(Voxels.Length);
+        tasks.AddRange(Voxels.Cast<Voxel>().Select(voxel => Task.Run(voxel.CreateMesh)));
+
+        Task.WaitAll(tasks.ToArray());
         MergeVoxelMeshes();
         gameObject.transform.position = _chunkPosition;
         gameObject.transform.localScale /= _settings.blocksPerMeter;
@@ -78,14 +81,26 @@ public class Chunk
 
     private CombineInstance[] GetMeshCombinerFromChildren()
     {
-        var voxelMeshFilters = gameObject.GetComponentsInChildren<MeshFilter>();
-        var meshCombiner = new CombineInstance[voxelMeshFilters.Length];
+        var voxelMeshFilters = Voxels;
+        var meshCombiner = new CombineInstance[voxelMeshFilters.Length * 6];
         var i = 0;
-        while (i < voxelMeshFilters.Length)
+        var chunkTransform = gameObject.transform;
+        foreach (var voxel in Voxels)
         {
-            meshCombiner[i].mesh = voxelMeshFilters[i].sharedMesh;
-            meshCombiner[i].transform = voxelMeshFilters[i].transform.localToWorldMatrix;
-            i++;
+            for (var j = 0; j < voxel.Vertices.Length; j++)
+            {
+                var current = i + j;
+                var mesh = new Mesh()
+                {
+                    vertices = voxel.Vertices[j],
+                    triangles = voxel.Triangles[j],
+                    uv = voxel.Uv[j],
+                    normals = voxel.Normals[j],
+                };
+                meshCombiner[current].mesh = mesh;
+                meshCombiner[current].transform = chunkTransform.localToWorldMatrix;
+            }
+            i += voxel.Vertices.Length;
         }
 
         return meshCombiner;
