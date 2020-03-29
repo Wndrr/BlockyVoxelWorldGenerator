@@ -26,30 +26,31 @@ public class WorldGenerator : MonoBehaviour
     void Start()
     {
         Chunks = new Dictionary<Vector3Int, Chunk>(settings.generationRadiusInChunks * 2 * 3);
-        StartCoroutine(nameof(GenerateChunks));
+        StartCoroutine(RegenerateChunks());
     }
 
-    private void GenerateChunkAndAdjacentChunks(Vector3Int identifier, int remainingDistance)
+    private IEnumerator GenerateChunkAndAdjacentChunks(Vector3Int identifier, int remainingDistance)
     {
         if (!Chunks.ContainsKey(identifier))
             Chunks.Add(identifier, new Chunk(identifier, this.gameObject, settings));
 
         if (remainingDistance <= 0)
-            return;
+            yield break;
 
         foreach (var identifierOfAdjacentChunkToGenerate in _directions.Select(direction => identifier + direction))
         {
-            GenerateChunkAndAdjacentChunks(identifierOfAdjacentChunkToGenerate.ToVector3Int(), remainingDistance - 1);
+            StartCoroutine(GenerateChunkAndAdjacentChunks(identifierOfAdjacentChunkToGenerate.ToVector3Int(), remainingDistance - 1));
         }
     }
 
-    private void GenerateChunks()
+    private IEnumerator GenerateChunks()
     {
-        GenerateChunkAndAdjacentChunks(Vector3Int.zero, settings.generationRadiusInChunks - 1);
+        yield return GenerateChunkAndAdjacentChunks(Vector3Int.zero, settings.generationRadiusInChunks - 1);
 
         foreach (var chunk in Chunks)
         {
             chunk.Value.CreateMesh();
+            yield return null;
         }
     }
 
@@ -89,28 +90,25 @@ public class WorldGenerator : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.R))
         {
-            foreach (var chunk in Chunks)
-            {
-                Destroy(chunk.Value.gameObject);
-            }
-
-            Chunks.Clear();
-
-            Chunks = new Dictionary<Vector3Int, Chunk>(settings.generationRadiusInChunks * 2 * 3);
-            StartCoroutine(nameof(GenerateChunks));
+            StopCoroutine(nameof(GenerateChunks));
+            StopCoroutine(nameof(GenerateChunkAndAdjacentChunks));
+            StartCoroutine(RegenerateChunks());
         }
     }
-}
 
-public static class Vector3Utils
-{
-    public static Vector3Int ToVector3Int(this Vector3 input)
+    private IEnumerator RegenerateChunks()
     {
-        return new Vector3Int()
+        foreach (var chunk in Chunks)
         {
-            x = (int) input.x,
-            y = (int) input.y,
-            z = (int) input.z,
-        };
+            Destroy(chunk.Value.gameObject);
+        }
+
+        yield return null;
+
+        Chunks.Clear();
+        yield return null;
+
+        Chunks = new Dictionary<Vector3Int, Chunk>(settings.generationRadiusInChunks * 2 * 3);
+        StartCoroutine(nameof(GenerateChunks));
     }
 }
