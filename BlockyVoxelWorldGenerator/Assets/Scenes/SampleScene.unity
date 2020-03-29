@@ -244,7 +244,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   blocksPerMeter: 1
   generationRadiusInChunks: 2
-  voxelsPerChunkSide: 16
+  voxelsPerChunkSide: 4
+  IsDebug: 0
+  maxHeight: 25
+  smooth: 0.5
+  octaves: 2
+  persistence: 0.5
 --- !u!4 &1034592245
 Transform:
   m_ObjectHideFlags: 0

@@ -10,7 +10,8 @@ public class WorldGenerator : MonoBehaviour
 {
     public WorldGeneratorSettings settings;
     private Vector3 _position;
-    public static Chunk[,,] Chunks;
+    public static Dictionary<Vector3Int, Chunk> Chunks;
+
     private List<Vector3> _directions = new List<Vector3>()
     {
         Vector3.back,
@@ -24,45 +25,46 @@ public class WorldGenerator : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        Chunks = new Chunk[settings.generationRadiusInChunks * 2, settings.generationRadiusInChunks * 2, settings.generationRadiusInChunks * 2];
+        Chunks = new Dictionary<Vector3Int, Chunk>(settings.generationRadiusInChunks * 2 * 3);
         StartCoroutine(nameof(GenerateChunks));
     }
 
-    private void GenerateChunkAndAdjacentChunks(Vector3 identifier, int remainingDistance)
+    private void GenerateChunkAndAdjacentChunks(Vector3Int identifier, int remainingDistance)
     {
-        Chunks[(int) identifier.x, (int) identifier.y, (int) identifier.z] = new Chunk(identifier, this.gameObject, settings);
+        if (!Chunks.ContainsKey(identifier))
+            Chunks.Add(identifier, new Chunk(identifier, this.gameObject, settings));
 
         if (remainingDistance <= 0)
             return;
-        
+
         foreach (var identifierOfAdjacentChunkToGenerate in _directions.Select(direction => identifier + direction))
         {
-            GenerateChunkAndAdjacentChunks(identifierOfAdjacentChunkToGenerate, remainingDistance - 1);
+            GenerateChunkAndAdjacentChunks(identifierOfAdjacentChunkToGenerate.ToVector3Int(), remainingDistance - 1);
         }
     }
 
     private void GenerateChunks()
     {
-        GenerateChunkAndAdjacentChunks(Vector3.zero, settings.generationRadiusInChunks - 1);
-        
+        GenerateChunkAndAdjacentChunks(Vector3Int.zero, settings.generationRadiusInChunks - 1);
+
         foreach (var chunk in Chunks)
         {
-            chunk.CreateMesh();
+            chunk.Value.CreateMesh();
         }
     }
-    
+
     private void OnDrawGizmos()
     {
         if (!settings.IsDebug)
             return;
 
-        for (var chunkX = 0; chunkX < Chunks.GetLength(0); chunkX++)
-        for (var chunkY = 0; chunkY < Chunks.GetLength(1); chunkY++)
-        for (var chunkZ = 0; chunkZ < Chunks.GetLength(2); chunkZ++)
+        for (var chunkX = 0; chunkX < Chunks.Count; chunkX++)
+        for (var chunkY = 0; chunkY < Chunks.Count; chunkY++)
+        for (var chunkZ = 0; chunkZ < Chunks.Count; chunkZ++)
         {
             try
             {
-                var chunk = Chunks[chunkX, chunkY, chunkZ];
+                var chunk = Chunks[new Vector3Int(chunkX, chunkY, chunkZ)];
                 if (chunk != null)
                 {
                     for (var voxelX = 0; voxelX < chunk.Voxels.GetLength(0); voxelX++)
@@ -87,14 +89,28 @@ public class WorldGenerator : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.R))
         {
-            for (var x = 0; x < Chunks.GetLength(0); x++)
-            for (var y = 0; y < Chunks.GetLength(1); y++)
-            for (var z = 0; z < Chunks.GetLength(2); z++)
+            foreach (var chunk in Chunks)
             {
-             Destroy(Chunks[x, y, z].gameObject);   
+                Destroy(chunk.Value.gameObject);
             }
-            Chunks = new Chunk[settings.generationRadiusInChunks, settings.generationRadiusInChunks, settings.generationRadiusInChunks];
+
+            Chunks.Clear();
+
+            Chunks = new Dictionary<Vector3Int, Chunk>(settings.generationRadiusInChunks * 2 * 3);
             StartCoroutine(nameof(GenerateChunks));
         }
+    }
+}
+
+public static class Vector3Utils
+{
+    public static Vector3Int ToVector3Int(this Vector3 input)
+    {
+        return new Vector3Int()
+        {
+            x = (int) input.x,
+            y = (int) input.y,
+            z = (int) input.z,
+        };
     }
 }

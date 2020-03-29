@@ -8,7 +8,7 @@ public class Chunk
     public GameObject gameObject;
     private Vector3 _chunkPosition;
 
-    public Chunk(Vector3 identifier, GameObject parent, WorldGeneratorSettings settings)
+    public Chunk(Vector3Int identifier, GameObject parent, WorldGeneratorSettings settings)
     {
         Identifier = identifier;
         _settings = settings;

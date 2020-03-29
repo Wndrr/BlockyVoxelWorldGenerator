@@ -106,7 +106,7 @@ public class Voxel
 
             try
             {
-                chunk = WorldGenerator.Chunks[(int) idOfTargetChunk.x, (int) idOfTargetChunk.y, (int) idOfTargetChunk.z];
+                chunk = WorldGenerator.Chunks[new Vector3Int((int) idOfTargetChunk.x, (int) idOfTargetChunk.y, (int) idOfTargetChunk.z)];
             }
             catch (Exception e)
             {
