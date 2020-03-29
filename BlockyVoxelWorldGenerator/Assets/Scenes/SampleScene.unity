@@ -243,10 +243,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   blocksPerMeter: 1
-  generationRadiusInChunks: 2
+  generationRadiusInChunks: 6
   voxelsPerChunkSide: 4
   IsDebug: 0
-  maxHeight: 25
+  maxHeightInChunks: 4
   smooth: 0.5
   octaves: 2
   persistence: 0.5

@@ -43,8 +43,8 @@ public class Voxel
         _settings = settings;
         CreateGameObject(localIdentifier, chunkPosition, parent);
         var worldPosition = localIdentifier / _settings.blocksPerMeter + chunkPosition;
-        var perlinNoise = Mathf.PerlinNoise(worldPosition.x * .2f, worldPosition.z * .2f); 
-        var heightMap = Noise.Map(0, _settings.maxHeight, 0, 1, perlinNoise);
+        var perlinNoise = Mathf.PerlinNoise(worldPosition.x * .02f + 10000, worldPosition.z * .02f + 10000); 
+        var heightMap = Noise.Map(0, _settings.maxHeightInChunks * (float)settings.voxelsPerChunkSide / _settings.blocksPerMeter, 0, 1, perlinNoise);
         if (heightMap < worldPosition.y)
             isSolid = false;
         else

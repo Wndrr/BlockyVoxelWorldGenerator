@@ -4,12 +4,6 @@ using UnityEngine;
 
 public class Noise : MonoBehaviour
 {
-    public static int GenerateHeight(float x, float z)
-    {
-        float height = Map(0, WorldGeneratorSettings.Instance.maxHeight, 0, 1, fBM(x * WorldGeneratorSettings.Instance.smooth, z * WorldGeneratorSettings.Instance.smooth, WorldGeneratorSettings.Instance.octaves, WorldGeneratorSettings.Instance.persistence));
-        return (int) height;
-    }
-
     public static float fBM3D(float x, float y, float z, float sm, int oct)
     {
         float XY = fBM(x * sm, y * sm, oct, 0.5f);

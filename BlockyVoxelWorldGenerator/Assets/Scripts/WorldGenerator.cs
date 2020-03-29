@@ -31,7 +31,7 @@ public class WorldGenerator : MonoBehaviour
 
     private IEnumerator GenerateChunkAndAdjacentChunks(Vector3Int identifier, int remainingDistance)
     {
-        if (!Chunks.ContainsKey(identifier))
+        if (!Chunks.ContainsKey(identifier) && identifier.y >= 0)
             Chunks.Add(identifier, new Chunk(identifier, this.gameObject, settings));
 
         if (remainingDistance <= 0)
