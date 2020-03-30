@@ -10,7 +10,7 @@ using Vector3 = UnityEngine.Vector3;
 public class Voxel
 {
     public readonly Vector3 LocalIdentifier;
-    private readonly Chunk _parentChunk;
+    private readonly ChunkData _parentChunk;
     private readonly WorldGeneratorSettings _settings;
 
     public Vector3[][] Vertices { get; set; }
@@ -40,7 +40,7 @@ public class Voxel
         Back
     }
 
-    public Voxel(Vector3 localIdentifier, Vector3 chunkPosition, GameObject parent, Chunk parentChunk, WorldGeneratorSettings settings)
+    public Voxel(Vector3 localIdentifier, Vector3 chunkPosition, ChunkData parentChunk, WorldGeneratorSettings settings)
     {
         LocalIdentifier = localIdentifier;
         _parentChunk = parentChunk;
@@ -97,19 +97,14 @@ public class Voxel
     private bool IsVoxelWithThisIdentifierSolid(Vector3 identifierOfVoxelToCheck)
     {
         var targetIdentifierToCheck = identifierOfVoxelToCheck;
-        Chunk chunk;
+        ChunkData chunk;
         if (IsNotInCurrentChunk(identifierOfVoxelToCheck))
         {
             var idOfTargetChunk = GetIdOfTargetChunk(identifierOfVoxelToCheck);
 
-            try
-            {
-                chunk = WorldGenerator.Chunks[new Vector3Int((int) idOfTargetChunk.x, (int) idOfTargetChunk.y, (int) idOfTargetChunk.z)];
-            }
-            catch (Exception e)
-            {
-                return false;
-            }
+                chunk = WorldGenerator.ChunksData.SingleOrDefault(c => c.Identifier == idOfTargetChunk.ToVector3Int());
+                if (chunk == null)
+                    return false;
         }
         else
         {

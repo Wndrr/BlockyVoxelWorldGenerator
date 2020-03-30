@@ -3,25 +3,27 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 
-public class Chunk
+public class ChunkData
 {
-    public readonly Vector3 Identifier;
-    private readonly WorldGeneratorSettings _settings;
+    public readonly WorldGeneratorSettings _settings;
     public Voxel[,,] Voxels;
-    public GameObject gameObject;
+    public Vector3Int Identifier;
     private Vector3 _chunkPosition;
+    public ChunkLoadState State { get; set; }
 
-    public Chunk(Vector3Int identifier, GameObject parent, WorldGeneratorSettings settings)
+    public ChunkData(Vector3Int identifier, WorldGeneratorSettings settings)
+    {
+        State = ChunkLoadState.AwaitDraw;
+        _settings = settings;
+        Update(identifier);
+        CreateVoxels(settings);
+    }
+
+    public void Update(Vector3Int identifier)
     {
         Identifier = identifier;
-        _settings = settings;
-        _chunkPosition = Identifier * _settings.voxelsPerChunkSide / _settings.blocksPerMeter;
-        gameObject = new GameObject
-        {
-            name = $"Chunk - {identifier.ToString()}"
-        };
-        gameObject.transform.parent = parent.transform;
-        CreateVoxels(settings);
+        _chunkPosition = Identifier.ToVector3() * _settings.voxelsPerChunkSide / _settings.blocksPerMeter;
+        Identifier = identifier;
     }
 
     private void CreateVoxels(WorldGeneratorSettings settings)
@@ -32,77 +34,107 @@ public class Chunk
         for (var z = 0; z < settings.voxelsPerChunkSide; z++)
         {
             var localIdentifier = new Vector3(x, y, z);
-            Voxels[x, y, z] = new Voxel(localIdentifier, _chunkPosition, gameObject, this, settings);
+            Voxels[x, y, z] = new Voxel(localIdentifier, _chunkPosition, this, settings);
         }
+    }
+}
 
+public enum ChunkRendererState
+{
+    Available,
+    AwaitingDraw,
+    Drawn
+}
+public class ChunkRenderer
+{
+    public ChunkData Data { get; set; }
+
+    private MeshFilter _meshFilter;
+    private MeshRenderer _meshRenderer;
+    public ChunkRendererState State { get; set; }
+    public GameObject GameObject;
+
+    public ChunkRenderer(ChunkData data, GameObject parent)
+    {
+        GameObject = new GameObject();
+        Data = data;
+        GameObject.transform.parent = parent.transform;
+        UpdateName();
+        _meshFilter = GameObject.AddComponent<MeshFilter>();
+        _meshFilter.transform.position = Vector3.zero;
+        _meshRenderer = GameObject.AddComponent<MeshRenderer>();
+        _meshRenderer.material = WorldGeneratorSettings.DefaultMaterial;
+        State = ChunkRendererState.AwaitingDraw;
     }
 
-    public void CreateMesh()
+    public void UpdateData(ChunkData data)
     {
-        var tasks = new List<Task>(Voxels.Length);
-        tasks.AddRange(Voxels.Cast<Voxel>().Select(voxel => Task.Run(voxel.CreateMesh)));
+        State = ChunkRendererState.AwaitingDraw;
+        Data = data;
+        Data.State = ChunkLoadState.Done;
+        UpdateName();
+    }
+
+    private void UpdateName()
+    {
+        GameObject.name = $"Chunk - {Data.Identifier.ToString()}";
+    }
+
+
+    public void CreateVoxelsMeshData()
+    {
+        var tasks = new List<Task>(Data.Voxels.Length);
+        tasks.AddRange(Data.Voxels.Cast<Voxel>().Select(voxel => Task.Run(voxel.CreateMesh)));
 
         Task.WaitAll(tasks.ToArray());
-        MergeVoxelMeshes();
-        gameObject.transform.position = _chunkPosition;
-        gameObject.transform.localScale /= _settings.blocksPerMeter;
+    }
+    
+    public void Draw()
+    {
+        UpdateMesh();
+        UpdateTransform();
+        State = ChunkRendererState.Drawn;
     }
 
-    private void MergeVoxelMeshes()
+    private void UpdateTransform()
     {
-        var meshCombiner = GetMeshCombinerFromChildren();
-        AddCombinedMeshesToChunk(meshCombiner);
-        AddMeshRenderer();
-        RemoveChildren();
+        //A local reference is faster than accessing the built-in prop
+        var transformProp = GameObject.transform;
+        transformProp.position = Data.Identifier.ToVector3() * (Data._settings.voxelsPerChunkSide / (float) Data._settings.blocksPerMeter);
+        transformProp.localScale /= Data._settings.blocksPerMeter;
     }
 
-    private void RemoveChildren()
+    private void UpdateMesh()
     {
-        foreach (Transform quad in gameObject.transform)
-        {
-            GameObject.Destroy(quad.gameObject);
-        }
-    }
-
-    private void AddMeshRenderer()
-    {
-        var meshRenderer = gameObject.AddComponent<MeshRenderer>();
-        meshRenderer.material = new Material(Shader.Find("Diffuse"));
-    }
-
-    private void AddCombinedMeshesToChunk(CombineInstance[] meshCombiner)
-    {
-        var meshFilter = gameObject.AddComponent<MeshFilter>();
-        meshFilter.mesh = new Mesh();
-        meshFilter.transform.position = Vector3.zero;
-
-        meshFilter.mesh.CombineMeshes(meshCombiner);
-    }
-
-    private CombineInstance[] GetMeshCombinerFromChildren()
-    {
-        var voxelMeshFilters = Voxels;
-        var meshCombiner = new CombineInstance[voxelMeshFilters.Length * 6];
+        CreateVoxelsMeshData();
+        var meshCombiner = new CombineInstance[Data.Voxels.Length * 6];
         var i = 0;
-        var chunkTransform = gameObject.transform;
-        foreach (var voxel in Voxels)
+        var chunkTransform = GameObject.transform;
+        foreach (var voxel in Data.Voxels)
         {
             for (var j = 0; j < voxel.Vertices.Length; j++)
             {
-                var current = i + j;
-                var mesh = new Mesh()
-                {
-                    vertices = voxel.Vertices[j],
-                    triangles = voxel.Triangles[j],
-                    uv = voxel.Uv[j],
-                    normals = voxel.Normals[j],
-                };
-                meshCombiner[current].mesh = mesh;
-                meshCombiner[current].transform = chunkTransform.localToWorldMatrix;
+                AddMeshToCombiner(i, j, voxel, meshCombiner, chunkTransform);
             }
+
             i += voxel.Vertices.Length;
         }
 
-        return meshCombiner;
+        _meshFilter.mesh.Clear();
+        _meshFilter.mesh.CombineMeshes(meshCombiner);
+    }
+
+    private static void AddMeshToCombiner(int i, int j, Voxel voxel, CombineInstance[] meshCombiner1, Transform chunkTransform)
+    {
+        var current = i + j;
+        var mesh = new Mesh()
+        {
+            vertices = voxel.Vertices[j],
+            triangles = voxel.Triangles[j],
+            uv = voxel.Uv[j],
+            normals = voxel.Normals[j],
+        };
+        meshCombiner1[current].mesh = mesh;
+        meshCombiner1[current].transform = chunkTransform.localToWorldMatrix;
     }
 }
