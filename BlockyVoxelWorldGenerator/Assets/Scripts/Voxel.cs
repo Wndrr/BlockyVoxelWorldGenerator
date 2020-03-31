@@ -31,7 +31,7 @@ public class Voxel
 
     public bool isSolid = true;
 
-    enum Cubeside
+    public enum Cubeside
     {
         Down,
         Up,
@@ -63,19 +63,13 @@ public class Voxel
         }
     }
 
-    public void CreateMesh()
+    public IEnumerable<KeyValuePair<Cubeside, Vector3>> GetListOfFacesToDraw()
     {
-        if (!isSolid)
-            return;
-        HasAtLeasOneNonSolidNeighbourgh = false;
-        foreach (var side in _sides.Where(side => !IsVoxelWithThisIdentifierSolid(LocalIdentifier + side.Value)))
-        {
-            HasAtLeasOneNonSolidNeighbourgh = true;
-            CreateFace(side.Key, side.Value);
-        }
+        // return _sides.Where(side => !IsVoxelWithThisIdentifierSolid(LocalIdentifier + side.Value));
+        return _sides;
     }
 
-    int ConvertOffsetDimensionToTargetChunk(int i)
+    private int ConvertOffsetDimensionToTargetChunk(int i)
     {
         if (i == -1)
             i = _settings.voxelsPerChunkSide - 1;
@@ -148,53 +142,12 @@ public class Voxel
                identifierToCheck.y < 0 || identifierToCheck.y >= _settings.voxelsPerChunkSide ||
                identifierToCheck.z < 0 || identifierToCheck.z >= _settings.voxelsPerChunkSide;
     }
+}
 
-    private void CreateFace(Cubeside sideName, Vector3 sideDirection)
-    {
-        Vector3[] vertices;
-        var normals = new[] {sideDirection, sideDirection, sideDirection, sideDirection};
-        var triangles = new[] {3, 1, 0, 3, 2, 1};
-        Vector2[] uvs = {Vector2.down, Vector2.left, Vector2.up, Vector2.right};
-        // Bottom
-        var p0 = new Vector3(-0.5f, -0.5f, 0.5f);
-        var p1 = new Vector3(0.5f, -0.5f, 0.5f);
-        var p2 = new Vector3(0.5f, -0.5f, -0.5f);
-        var p3 = new Vector3(-0.5f, -0.5f, -0.5f);
-        // Top
-        var p4 = new Vector3(-0.5f, 0.5f, 0.5f);
-        var p5 = new Vector3(0.5f, 0.5f, 0.5f);
-        var p6 = new Vector3(0.5f, 0.5f, -0.5f);
-        var p7 = new Vector3(-0.5f, 0.5f, -0.5f);
-
-        switch (sideName)
-        {
-            case Cubeside.Down:
-                vertices = new[] {p0, p1, p2, p3};
-                break;
-            case Cubeside.Up:
-                vertices = new[] {p7, p6, p5, p4};
-                break;
-            case Cubeside.Left:
-                vertices = new[] {p7, p4, p0, p3};
-                break;
-            case Cubeside.Right:
-                vertices = new[] {p5, p6, p2, p1};
-                break;
-            case Cubeside.Front:
-                vertices = new[] {p4, p5, p1, p0};
-                break;
-            case Cubeside.Back:
-                vertices = new[] {p6, p7, p3, p2};
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(sideName), sideName, null);
-        }
-
-        vertices = vertices.Select(v => v + (LocalIdentifier)).ToArray();
-        var index = (int) sideName;
-        Vertices[index] = vertices;
-        Normals[index] = normals;
-        Uv[index] = uvs;
-        Triangles[index] = triangles;
-    }
+public struct VoxelMeshData
+{
+    public Vector3[] Vertices { get; set; }
+    public Vector3[] Normals { get; set; }
+    public Vector2[] Uv { get; set; }
+    public int[] Triangles { get; set; }
 }

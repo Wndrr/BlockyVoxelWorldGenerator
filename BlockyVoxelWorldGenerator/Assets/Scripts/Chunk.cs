@@ -85,14 +85,6 @@ public class ChunkRenderer
     }
 
 
-    public void CreateVoxelsMeshData()
-    {
-        var tasks = new List<Task>(Data.Voxels.Length);
-        tasks.AddRange(Data.Voxels.Cast<Voxel>().Select(voxel => Task.Run(voxel.CreateMesh)));
-
-        Task.WaitAll(tasks.ToArray());
-    }
-
     public IEnumerator Draw()
     {
         yield return UpdateMesh();
@@ -108,64 +100,100 @@ public class ChunkRenderer
         transformProp.localScale /= Data._settings.blocksPerMeter;
     }
 
-    private CombineInstance[] _meshCombiner;
+    private VoxelMeshData[] _voxelMeshDataPool;
 
     private IEnumerator UpdateMesh()
     {
-        CreateVoxelsMeshData();
-        yield return null;
-        var numberOfMeshesToCombine = Data.Voxels.Length * 6;
-        if (_meshCombiner == null || _meshCombiner.Length < numberOfMeshesToCombine)
-        {
-            _meshCombiner = new CombineInstance[numberOfMeshesToCombine];
-            for (var index = 0; index < _meshCombiner.Length; index++)
-            {
-                _meshCombiner[index].mesh = new Mesh();
-            }
-        }
+        var maximumNumbersOfFaces = Data.Voxels.Length * 6;
+        if (maximumNumbersOfFaces > 65000)
+            throw new NotImplementedException("Mesh with more than 65 000 vertices are not supported");
 
-
-        var tasks = new List<Task>(Data.Voxels.Length);
+        if (_voxelMeshDataPool == null || _voxelMeshDataPool.Length != maximumNumbersOfFaces)
+            _voxelMeshDataPool = new VoxelMeshData[maximumNumbersOfFaces];
         var i = 0;
         foreach (var voxel in Data.Voxels)
         {
-            if (voxel.HasAtLeasOneNonSolidNeighbourgh)
+            foreach (var side in voxel.GetListOfFacesToDraw())
             {
-                var i1 = i;
-                tasks.Add(Task.Run(() => { CombienVoxelMeshes(voxel, i1); }));
+                Vector3[] vertices1 = new Vector3[0];
+                int[] triangles = new int[0];
+                var leftDownBack = Vector3.left + Vector3.down + Vector3.back;
+                var rightDownBack = Vector3.right + Vector3.down + Vector3.back;
+                var rightUpBack = Vector3.right + Vector3.up + Vector3.back;
+                var leftUpBack = Vector3.left + Vector3.up + Vector3.back;
+                var leftUpForward = Vector3.left + Vector3.up + Vector3.forward;
+                var rightUpForward = Vector3.right + Vector3.up + Vector3.forward;
+                var rightDownForward = Vector3.right + Vector3.down + Vector3.forward;
+                var leftDownForward = Vector3.left + Vector3.down + Vector3.forward;
+
+                switch (side.Key)
+                {
+                    case Voxel.Cubeside.Front:
+                        vertices1 = new[] {leftDownBack, rightDownBack, rightUpBack, leftUpBack,};
+                        triangles = new[] {0, 2, 1, 0, 3, 2,};
+                        break;
+                    case Voxel.Cubeside.Back:
+                        vertices1 = new[] {leftUpForward, rightUpForward, rightDownForward, leftDownForward};
+                        triangles = new[] {1, 0, 3, 1, 3, 2,};
+                        break;
+                    case Voxel.Cubeside.Up:
+                        vertices1 = new[] {rightUpBack, leftUpBack, leftUpForward, rightUpForward};
+                        triangles = new[] {0, 1, 2, 0, 2, 3,};
+                        break;
+                    case Voxel.Cubeside.Down:
+                        vertices1 = new[] {leftDownBack, rightDownBack, rightDownForward, leftDownForward};
+                        triangles = new[] {0, 2, 3, 0, 1, 2};
+                        break;
+                    case Voxel.Cubeside.Right:
+                        vertices1 = new[] {rightDownBack, rightUpBack, rightUpForward, rightDownForward};
+                        triangles = new[] {0, 1, 2, 0, 2, 3,};
+                        break;
+                    case Voxel.Cubeside.Left:
+                        vertices1 = new[] {leftDownBack, leftUpBack, leftUpForward, leftDownForward};
+                        triangles = new[] {0, 3, 2, 0, 2, 1,};
+                        break;
+
+                    default:
+                        continue;
+                    // throw new ArgumentOutOfRangeException(nameof(side.Key), side.Key, null);
+                }
+
+                if (vertices1.Length == 0)
+                    continue;
+                var normales = new []{side.Value,side.Value,side.Value,side.Value,};
+                vertices1 = vertices1.Select(v => v + (voxel.LocalIdentifier)).ToArray();
+                _voxelMeshDataPool[i].Vertices = vertices1;
+                _voxelMeshDataPool[i].Triangles = triangles;
+                _voxelMeshDataPool[i].Normals = normales;
+                i++;
             }
-
-            i += voxel.Vertices.Length;
-            if (i % (Data.Voxels.Length / 10) == 0)
-                yield return null;
         }
 
-        var allTasks = Task.WhenAll(tasks);
-        while (!allTasks.IsCompleted)
-        {
-            yield return null;
-        }
-        
-        _meshFilter.mesh.Clear();
-        _meshFilter.mesh.CombineMeshes(_meshCombiner);
+        DrawMesh();
+
+        yield break;
     }
 
-    private void CombienVoxelMeshes(Voxel voxel, int i1)
+    private void DrawMesh()
     {
-        for (var j = 0; j < voxel.Vertices.Length; j++)
+        var vertices = _voxelMeshDataPool.SelectMany(v => v.Vertices).ToArray();
+        var vector3s = _voxelMeshDataPool.SelectMany(v => v.Normals).ToArray();
+        var triangles = new List<int>();
+        for (var i = 0; i < _voxelMeshDataPool.Length; i++)
         {
-            var mesh = _meshCombiner[i1 + j].mesh;
-            mesh.Clear();
-            MapIntoMesh(mesh, voxel, j);
-            _meshCombiner[i1 + j].transform = Matrix4x4.identity;
+            triangles.AddRange(_voxelMeshDataPool[i].Triangles.Select(triangle => triangle + (4 * i)));
         }
-    }
+        var meshFilterMesh = new Mesh()
+        {
+            vertices = vertices,
+            triangles = triangles.ToArray(),
+            normals = vector3s,
+            uv = new Vector2[0]
+        };
+        meshFilterMesh.RecalculateBounds();
+        meshFilterMesh.RecalculateNormals();
+        meshFilterMesh.RecalculateTangents();
+        _meshFilter.mesh = meshFilterMesh;
 
-    private static void MapIntoMesh(Mesh mesh, Voxel voxel, int j)
-    {
-        mesh.vertices = voxel.Vertices[j];
-        mesh.triangles = voxel.Triangles[j];
-        mesh.uv = voxel.Uv[j];
-        mesh.normals = voxel.Normals[j];
     }
 }
