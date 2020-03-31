@@ -61,10 +61,10 @@ public class ChunkRenderer
         GameObject.transform.parent = parent.transform;
         UpdateName();
         _meshFilter = GameObject.AddComponent<MeshFilter>();
-        _meshFilter.transform.position = Vector3.zero;
         _meshRenderer = GameObject.AddComponent<MeshRenderer>();
         _meshRenderer.material = WorldGeneratorSettings.DefaultMaterial;
         State = ChunkRendererState.AwaitingDraw;
+        UpdateTransform();
     }
 
     public void UpdateData(ChunkData data)
@@ -124,7 +124,7 @@ public class ChunkRenderer
         _meshFilter.mesh.CombineMeshes(meshCombiner);
     }
 
-    private static void AddMeshToCombiner(int i, int j, Voxel voxel, CombineInstance[] meshCombiner1, Transform chunkTransform)
+    private static void AddMeshToCombiner(int i, int j, Voxel voxel, CombineInstance[] meshCombiner, Transform chunkTransform)
     {
         var current = i + j;
         var mesh = new Mesh()
@@ -134,7 +134,8 @@ public class ChunkRenderer
             uv = voxel.Uv[j],
             normals = voxel.Normals[j],
         };
-        meshCombiner1[current].mesh = mesh;
-        meshCombiner1[current].transform = chunkTransform.localToWorldMatrix;
+        meshCombiner[current].mesh = mesh;
+        meshCombiner[current].transform = Matrix4x4.identity;
+
     }
 }
