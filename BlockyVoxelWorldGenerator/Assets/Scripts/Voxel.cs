@@ -17,6 +17,7 @@ public class Voxel
     public Vector3[][] Normals { get; set; }
     public Vector2[][] Uv { get; set; }
     public int[][] Triangles { get; set; }
+    public bool HasAtLeasOneNonSolidNeighbourgh { get; set; }
 
     private readonly Dictionary<Cubeside, Vector3> _sides = new Dictionary<Cubeside, Vector3>
     {
@@ -66,13 +67,11 @@ public class Voxel
     {
         if (!isSolid)
             return;
-
-        foreach (var side in _sides)
+        HasAtLeasOneNonSolidNeighbourgh = false;
+        foreach (var side in _sides.Where(side => !IsVoxelWithThisIdentifierSolid(LocalIdentifier + side.Value)))
         {
-            if (!IsVoxelWithThisIdentifierSolid(LocalIdentifier + side.Value))
-            {
-                CreateFace(side.Key, side.Value);
-            }
+            HasAtLeasOneNonSolidNeighbourgh = true;
+            CreateFace(side.Key, side.Value);
         }
     }
 
@@ -102,9 +101,9 @@ public class Voxel
         {
             var idOfTargetChunk = GetIdOfTargetChunk(identifierOfVoxelToCheck);
 
-                chunk = WorldGenerator.ChunksData.SingleOrDefault(c => c.Identifier == idOfTargetChunk.ToVector3Int());
-                if (chunk == null)
-                    return false;
+            chunk = WorldGenerator.ChunksData.SingleOrDefault(c => c.Identifier == idOfTargetChunk.ToVector3Int());
+            if (chunk == null)
+                return false;
         }
         else
         {

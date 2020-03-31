@@ -1,7 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 public class ChunkData
 {
@@ -45,6 +48,7 @@ public enum ChunkRendererState
     AwaitingDraw,
     Drawn
 }
+
 public class ChunkRenderer
 {
     public ChunkData Data { get; set; }
@@ -88,10 +92,10 @@ public class ChunkRenderer
 
         Task.WaitAll(tasks.ToArray());
     }
-    
-    public void Draw()
+
+    public IEnumerator Draw()
     {
-        UpdateMesh();
+        yield return UpdateMesh();
         UpdateTransform();
         State = ChunkRendererState.Drawn;
     }
@@ -104,38 +108,64 @@ public class ChunkRenderer
         transformProp.localScale /= Data._settings.blocksPerMeter;
     }
 
-    private void UpdateMesh()
+    private CombineInstance[] _meshCombiner;
+
+    private IEnumerator UpdateMesh()
     {
         CreateVoxelsMeshData();
-        var meshCombiner = new CombineInstance[Data.Voxels.Length * 6];
+        yield return null;
+        var numberOfMeshesToCombine = Data.Voxels.Length * 6;
+        if (_meshCombiner == null || _meshCombiner.Length < numberOfMeshesToCombine)
+        {
+            _meshCombiner = new CombineInstance[numberOfMeshesToCombine];
+            for (var index = 0; index < _meshCombiner.Length; index++)
+            {
+                _meshCombiner[index].mesh = new Mesh();
+            }
+        }
+
+
+        var tasks = new List<Task>(Data.Voxels.Length);
         var i = 0;
-        var chunkTransform = GameObject.transform;
         foreach (var voxel in Data.Voxels)
         {
-            for (var j = 0; j < voxel.Vertices.Length; j++)
+            if (voxel.HasAtLeasOneNonSolidNeighbourgh)
             {
-                AddMeshToCombiner(i, j, voxel, meshCombiner, chunkTransform);
+                var i1 = i;
+                tasks.Add(Task.Run(() => { CombienVoxelMeshes(voxel, i1); }));
             }
 
             i += voxel.Vertices.Length;
+            if (i % (Data.Voxels.Length / 10) == 0)
+                yield return null;
         }
 
+        var allTasks = Task.WhenAll(tasks);
+        while (!allTasks.IsCompleted)
+        {
+            yield return null;
+        }
+        
         _meshFilter.mesh.Clear();
-        _meshFilter.mesh.CombineMeshes(meshCombiner);
+        _meshFilter.mesh.CombineMeshes(_meshCombiner);
     }
 
-    private static void AddMeshToCombiner(int i, int j, Voxel voxel, CombineInstance[] meshCombiner, Transform chunkTransform)
+    private void CombienVoxelMeshes(Voxel voxel, int i1)
     {
-        var current = i + j;
-        var mesh = new Mesh()
+        for (var j = 0; j < voxel.Vertices.Length; j++)
         {
-            vertices = voxel.Vertices[j],
-            triangles = voxel.Triangles[j],
-            uv = voxel.Uv[j],
-            normals = voxel.Normals[j],
-        };
-        meshCombiner[current].mesh = mesh;
-        meshCombiner[current].transform = Matrix4x4.identity;
+            var mesh = _meshCombiner[i1 + j].mesh;
+            mesh.Clear();
+            MapIntoMesh(mesh, voxel, j);
+            _meshCombiner[i1 + j].transform = Matrix4x4.identity;
+        }
+    }
 
+    private static void MapIntoMesh(Mesh mesh, Voxel voxel, int j)
+    {
+        mesh.vertices = voxel.Vertices[j];
+        mesh.triangles = voxel.Triangles[j];
+        mesh.uv = voxel.Uv[j];
+        mesh.normals = voxel.Normals[j];
     }
 }

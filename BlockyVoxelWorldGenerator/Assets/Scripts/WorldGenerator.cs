@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 public enum ChunkLoadState
 {
@@ -43,7 +44,7 @@ public class WorldGenerator : MonoBehaviour
         mapGenerationCenter.SetActive(false);
         Setup();
         // Generate initial chunk to display as fast as possible, other chunks will be generated later
-        GenerateChunks(1);
+        StartCoroutine(GenerateChunks(1));
         mapGenerationCenter.SetActive(true);
     }
 
@@ -61,7 +62,7 @@ public class WorldGenerator : MonoBehaviour
         _identifierOfPreviousChunk = GetCenterPointCurrentChunk();
     }
 
-    private void GenerateChunks(int? overrideGenerationRadiusInChunks = null)
+    private IEnumerator GenerateChunks(int? overrideGenerationRadiusInChunks = null)
     {
         var centerOfGenerationChunkId = GetCenterPointCurrentChunk();
         var chunksToKeep = new ChunkKeepHelper().GetChunksToKeep(centerOfGenerationChunkId, overrideGenerationRadiusInChunks ?? settings.generationRadiusInChunks);
@@ -104,7 +105,7 @@ public class WorldGenerator : MonoBehaviour
 
         foreach (var chunkRenderer in ChunkRenderers.Where(renderer => renderer.State == ChunkRendererState.AwaitingDraw))
         {
-            chunkRenderer.Draw();
+            yield return chunkRenderer.Draw();
         }
     }
 
@@ -114,7 +115,7 @@ public class WorldGenerator : MonoBehaviour
         var identifierOfCurrentChunk = (mapGenerationCenter.transform.position / (settings.voxelsPerChunkSide * settings.blocksPerMeter)).ToVector3Int();
         if (identifierOfCurrentChunk != _identifierOfPreviousChunk)
         {
-            GenerateChunks();
+            StartCoroutine(GenerateChunks());
             _identifierOfPreviousChunk = identifierOfCurrentChunk;
         }
     }
