@@ -65,8 +65,8 @@ public class Voxel
 
     public IEnumerable<KeyValuePair<Cubeside, Vector3>> GetListOfFacesToDraw()
     {
-        // return _sides.Where(side => !IsVoxelWithThisIdentifierSolid(LocalIdentifier + side.Value));
-        return _sides;
+        return _sides.Where(side => !IsVoxelWithThisIdentifierSolid(LocalIdentifier + side.Value));
+        // return _sides;
     }
 
     private int ConvertOffsetDimensionToTargetChunk(int i)

@@ -176,12 +176,13 @@ public class ChunkRenderer
 
     private void DrawMesh()
     {
-        var vertices = _voxelMeshDataPool.SelectMany(v => v.Vertices).ToArray();
-        var vector3s = _voxelMeshDataPool.SelectMany(v => v.Normals).ToArray();
+        var voxelMeshDataPool = _voxelMeshDataPool.Where(m => m.Normals != null & m.Triangles != null && m.Triangles != null).ToArray();
+        var vertices = voxelMeshDataPool.SelectMany(v => v.Vertices).ToArray();
+        var vector3s = voxelMeshDataPool.SelectMany(v => v.Normals).ToArray();
         var triangles = new List<int>();
-        for (var i = 0; i < _voxelMeshDataPool.Length; i++)
+        for (var i = 0; i < voxelMeshDataPool.Length; i++)
         {
-            triangles.AddRange(_voxelMeshDataPool[i].Triangles.Select(triangle => triangle + (4 * i)));
+            triangles.AddRange(voxelMeshDataPool[i].Triangles.Select(triangle => triangle + (4 * i)));
         }
         var meshFilterMesh = new Mesh()
         {
