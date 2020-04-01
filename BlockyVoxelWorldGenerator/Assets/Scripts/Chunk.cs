@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -117,14 +117,14 @@ public class ChunkRenderer
             {
                 Vector3[] vertices1 = new Vector3[0];
                 int[] triangles = new int[0];
-                var leftDownBack = Vector3.left + Vector3.down + Vector3.back;
-                var rightDownBack = Vector3.right + Vector3.down + Vector3.back;
-                var rightUpBack = Vector3.right + Vector3.up + Vector3.back;
-                var leftUpBack = Vector3.left + Vector3.up + Vector3.back;
-                var leftUpForward = Vector3.left + Vector3.up + Vector3.forward;
-                var rightUpForward = Vector3.right + Vector3.up + Vector3.forward;
-                var rightDownForward = Vector3.right + Vector3.down + Vector3.forward;
-                var leftDownForward = Vector3.left + Vector3.down + Vector3.forward;
+                var leftDownBack = (Vector3.left + Vector3.down + Vector3.back) / 2;
+                var rightDownBack = (Vector3.right + Vector3.down + Vector3.back) / 2;
+                var rightUpBack = (Vector3.right + Vector3.up + Vector3.back) / 2;
+                var leftUpBack = (Vector3.left + Vector3.up + Vector3.back) / 2;
+                var leftUpForward = (Vector3.left + Vector3.up + Vector3.forward) / 2;
+                var rightUpForward = (Vector3.right + Vector3.up + Vector3.forward) / 2;
+                var rightDownForward = (Vector3.right + Vector3.down + Vector3.forward) / 2;
+                var leftDownForward = (Vector3.left + Vector3.down + Vector3.forward) / 2;
 
                 switch (side.Key)
                 {
