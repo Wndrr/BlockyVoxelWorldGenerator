@@ -344,7 +344,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   blocksPerMeter: 1
   generationRadiusInChunks: 1
-  voxelsPerChunkSide: 1
+  voxelsPerChunkSide: 2
   maxHeightInChunks: 4
 --- !u!4 &1034592245
 Transform:

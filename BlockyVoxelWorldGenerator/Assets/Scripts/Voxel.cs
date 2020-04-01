@@ -93,7 +93,7 @@ public class Voxel
         ChunkData chunk;
         if (IsNotInCurrentChunk(identifierOfVoxelToCheck))
         {
-            var idOfTargetChunk = GetIdOfTargetChunk(identifierOfVoxelToCheck);
+            var idOfTargetChunk = GetIdOfTargetChunk(identifierOfVoxelToCheck, _parentChunk.Identifier);
 
             chunk = WorldGenerator.ChunksData.SingleOrDefault(c => c.Identifier == idOfTargetChunk.ToVector3Int());
             if (chunk == null)
@@ -106,7 +106,12 @@ public class Voxel
 
         try
         {
-            return chunk.Voxels[(int) targetIdentifierToCheck.x, (int) targetIdentifierToCheck.y, (int) targetIdentifierToCheck.z].isSolid;
+            var isVoxelWithThisIdentifierSolid = chunk.Voxels[(int) targetIdentifierToCheck.x, (int) targetIdentifierToCheck.y, (int) targetIdentifierToCheck.z].isSolid;
+            if (isVoxelWithThisIdentifierSolid)
+                return true;
+            else
+                return false;
+            return isVoxelWithThisIdentifierSolid;
         }
         catch (Exception)
         {
@@ -116,24 +121,23 @@ public class Voxel
         return false;
     }
 
-    private Vector3 GetIdOfTargetChunk(Vector3 identifierOfVoxelToCheck)
+    private Vector3 GetIdOfTargetChunk(Vector3 identifierOfVoxelToCheck, Vector3 currentChunkId)
     {
-        var targetId = identifierOfVoxelToCheck;
-        if (targetId.x < 0)
-            targetId.x = _settings.voxelsPerChunkSide - 1;
-        if (targetId.y < 0)
-            targetId.y = _settings.voxelsPerChunkSide - 1;
-        if (targetId.z < 0)
-            targetId.z = _settings.voxelsPerChunkSide - 1;
+        if (identifierOfVoxelToCheck.x < 0)
+            currentChunkId.x--;
+        if (identifierOfVoxelToCheck.y < 0)
+            currentChunkId.y--;
+        if (identifierOfVoxelToCheck.z < 0)
+            currentChunkId.z--;
 
-        if (targetId.x > _settings.voxelsPerChunkSide)
-            targetId.x = 0;
-        if (targetId.y > _settings.voxelsPerChunkSide)
-            targetId.y = 0;
-        if (targetId.z > _settings.voxelsPerChunkSide)
-            targetId.z = 0;
+        if (identifierOfVoxelToCheck.x > _settings.voxelsPerChunkSide - 1)
+            currentChunkId.x++;
+        if (identifierOfVoxelToCheck.y > _settings.voxelsPerChunkSide - 1)
+            currentChunkId.y++;
+        if (identifierOfVoxelToCheck.z > _settings.voxelsPerChunkSide - 1)
+            currentChunkId.z++;
 
-        return targetId;
+        return currentChunkId;
     }
 
     private bool IsNotInCurrentChunk(Vector3 identifierToCheck)
@@ -150,4 +154,5 @@ public struct VoxelMeshData
     public Vector3[] Normals { get; set; }
     public Vector2[] Uv { get; set; }
     public int[] Triangles { get; set; }
+    public Voxel.Cubeside Side { get; set; }
 }

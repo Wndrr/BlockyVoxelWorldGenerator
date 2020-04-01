@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -113,7 +113,8 @@ public class ChunkRenderer
         var i = 0;
         foreach (var voxel in Data.Voxels)
         {
-            foreach (var side in voxel.GetListOfFacesToDraw())
+            var listOfFacesToDraw = voxel.GetListOfFacesToDraw().ToList();
+            foreach (var side in listOfFacesToDraw)
             {
                 Vector3[] vertices1 = new Vector3[0];
                 int[] triangles = new int[0];
@@ -129,12 +130,12 @@ public class ChunkRenderer
                 switch (side.Key)
                 {
                     case Voxel.Cubeside.Front:
-                        vertices1 = new[] {leftDownBack, rightDownBack, rightUpBack, leftUpBack,};
-                        triangles = new[] {0, 2, 1, 0, 3, 2,};
-                        break;
-                    case Voxel.Cubeside.Back:
                         vertices1 = new[] {leftUpForward, rightUpForward, rightDownForward, leftDownForward};
                         triangles = new[] {1, 0, 3, 1, 3, 2,};
+                        break;
+                    case Voxel.Cubeside.Back:
+                        vertices1 = new[] {leftDownBack, rightDownBack, rightUpBack, leftUpBack,};
+                        triangles = new[] {0, 2, 1, 0, 3, 2,};
                         break;
                     case Voxel.Cubeside.Up:
                         vertices1 = new[] {rightUpBack, leftUpBack, leftUpForward, rightUpForward};
@@ -165,6 +166,7 @@ public class ChunkRenderer
                 _voxelMeshDataPool[i].Vertices = vertices1;
                 _voxelMeshDataPool[i].Triangles = triangles;
                 _voxelMeshDataPool[i].Normals = normales;
+                _voxelMeshDataPool[i].Side = side.Key;
                 i++;
             }
         }
@@ -173,6 +175,8 @@ public class ChunkRenderer
 
         yield break;
     }
+    
+    
 
     private void DrawMesh()
     {
