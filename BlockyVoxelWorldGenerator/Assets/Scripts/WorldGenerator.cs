@@ -64,26 +64,63 @@ public class WorldGenerator : MonoBehaviour
 
     private IEnumerator GenerateChunks(int? overrideGenerationRadiusInChunks = null)
     {
-        var centerOfGenerationChunkId = GetCenterPointCurrentChunk();
-        var chunksToKeep = new ChunkKeepHelper().GetChunksToKeep(centerOfGenerationChunkId, overrideGenerationRadiusInChunks ?? settings.generationRadiusInChunks);
-        foreach (var chunk in ChunksData)
-        {
-            if (chunksToKeep.Contains(chunk.Identifier))
-                chunk.State = ChunkLoadState.Keep;
-            else
-                chunk.State = ChunkLoadState.Remove;
-        }
+        Profiler.BeginSample("MyPieceOfCode");
+        Profiler.BeginSample(nameof(SetChunkKeepStates));
+        var chunksToKeep = SetChunkKeepStates(overrideGenerationRadiusInChunks);
+        Profiler.EndSample();
+        
+        Profiler.BeginSample(nameof(RemoveChunks));
+        RemoveChunks();
+        Profiler.EndSample();
+        yield return null;
+        
+        Profiler.BeginSample(nameof(CreateNewChunksData));
+        CreateNewChunksData(chunksToKeep);
+        Profiler.EndSample();
+        yield return null;
+        
+        Profiler.BeginSample(nameof(UpdateChunksData));
+        UpdateChunksData();
+        Profiler.EndSample();
+        yield return null;
 
-        var removedChunkIds = ChunksData.Where(chunk => chunk.State == ChunkLoadState.Remove).Select(s => s.Identifier).ToList();
+        Profiler.BeginSample(nameof(CreateChunkRenderers));
+        CreateChunkRenderers();
+        Profiler.EndSample();
+        yield return null;
+        
+        Profiler.BeginSample(nameof(DrawChunks));
+        DrawChunks();
+        Profiler.EndSample();
+
+        Profiler.EndSample();
+
+    }
+
+    private static void RemoveChunks()
+    {
         ChunksData.RemoveAll(chunk => chunk.State == ChunkLoadState.Remove);
-        var alreadyLoadedChunks = ChunksData.Select(s => s.Identifier);
-        var chunksToLoad = chunksToKeep.Where(chunk => !alreadyLoadedChunks.Contains(chunk));
+    }
 
-        foreach (var chunkToLoad in chunksToLoad)
+    private void DrawChunks()
+    {
+        foreach (var chunkRenderer in ChunkRenderers.Where(renderer => renderer.State == ChunkRendererState.AwaitingDraw))
         {
-            ChunksData.Add(new ChunkData(chunkToLoad, settings));
+            StartCoroutine(chunkRenderer.Draw());
         }
+    }
 
+    private void CreateChunkRenderers()
+    {
+        foreach (var chunkData in ChunksData.Where(c => c.State == ChunkLoadState.AwaitDraw))
+        {
+            ChunkRenderers.Add(new ChunkRenderer(chunkData, gameObject));
+        }
+    }
+
+    private void UpdateChunksData()
+    {
+        var removedChunkIds = ChunksData.Where(chunk => chunk.State == ChunkLoadState.Remove).Select(s => s.Identifier).ToList();
         var chunkRederersToUpdate = ChunkRenderers.Where(chunk => removedChunkIds.Contains(chunk.Data.Identifier) || chunk.State == ChunkRendererState.Available).ToArray();
         var justGeneratedChunks = ChunksData.Where(chunk => chunk.State == ChunkLoadState.AwaitDraw).ToList();
         for (var i = 0; i < chunkRederersToUpdate.Count(); i++)
@@ -97,16 +134,31 @@ public class WorldGenerator : MonoBehaviour
                 chunkRederersToUpdate[i].State = ChunkRendererState.Available;
             }
         }
+    }
 
-        foreach (var chunkData in ChunksData.Where(c => c.State == ChunkLoadState.AwaitDraw))
+    private void CreateNewChunksData(List<Vector3Int> chunksToKeep)
+    {
+        var alreadyLoadedChunks = ChunksData.Select(s => s.Identifier);
+        var chunksToLoad = chunksToKeep.Where(chunk => !alreadyLoadedChunks.Contains(chunk));
+        foreach (var chunkToLoad in chunksToLoad)
         {
-            ChunkRenderers.Add(new ChunkRenderer(chunkData, gameObject));
+            ChunksData.Add(new ChunkData(chunkToLoad, settings));
+        }
+    }
+
+    private List<Vector3Int> SetChunkKeepStates(int? overrideGenerationRadiusInChunks)
+    {
+        var centerOfGenerationChunkId = GetCenterPointCurrentChunk();
+        var chunksToKeep = new ChunkKeepHelper().GetChunksToKeep(centerOfGenerationChunkId, overrideGenerationRadiusInChunks ?? settings.generationRadiusInChunks);
+        foreach (var chunk in ChunksData)
+        {
+            if (chunksToKeep.Contains(chunk.Identifier))
+                chunk.State = ChunkLoadState.Keep;
+            else
+                chunk.State = ChunkLoadState.Remove;
         }
 
-        foreach (var chunkRenderer in ChunkRenderers.Where(renderer => renderer.State == ChunkRendererState.AwaitingDraw))
-        {
-            yield return chunkRenderer.Draw();
-        }
+        return chunksToKeep;
     }
 
     // private void OnDrawGizmos()
@@ -124,12 +176,15 @@ public class WorldGenerator : MonoBehaviour
     void Update()
     {
         var identifierOfCurrentChunk = (mapGenerationCenter.transform.position / (settings.voxelsPerChunkSide * settings.blocksPerMeter)).ToVector3Int();
-        if (identifierOfCurrentChunk != _identifierOfPreviousChunk)
+        if (identifierOfCurrentChunk != _identifierOfPreviousChunk || !_hasFullGenBeenDone)
         {
             StartCoroutine(GenerateChunks());
             _identifierOfPreviousChunk = identifierOfCurrentChunk;
+            _hasFullGenBeenDone = true;
         }
     }
+
+    private bool _hasFullGenBeenDone = false;
 }
 
 public class ChunkCountHelper

@@ -88,9 +88,9 @@ public class ChunkRenderer
 
     public IEnumerator Draw()
     {
-        yield return UpdateMesh();
         UpdateTransform();
         State = ChunkRendererState.Drawn;
+        yield return UpdateMesh();
     }
 
     private void UpdateTransform()
@@ -101,83 +101,99 @@ public class ChunkRenderer
         transformProp.localScale /= Data._settings.blocksPerMeter;
     }
 
-    private VoxelMeshData[] _voxelMeshDataPool;
-
+    private List<VoxelMeshData> _voxelMeshDataPool;
+    
     private IEnumerator UpdateMesh()
     {
         var maximumNumbersOfFaces = Data.Voxels.Length * 6;
         if (maximumNumbersOfFaces > 65000)
             throw new NotImplementedException("Mesh with more than 65 000 vertices are not supported");
 
-        if (_voxelMeshDataPool == null || _voxelMeshDataPool.Length != maximumNumbersOfFaces)
-            _voxelMeshDataPool = new VoxelMeshData[maximumNumbersOfFaces];
-        var i = 0;
+        if (_voxelMeshDataPool == null || _voxelMeshDataPool.Count != maximumNumbersOfFaces)
+            _voxelMeshDataPool = new List<VoxelMeshData>(maximumNumbersOfFaces);
+
+        var tasks = new List<Task>();
+        
         foreach (var voxel in Data.Voxels)
         {
-            var listOfFacesToDraw = voxel.GetListOfFacesToDraw().ToList();
-            foreach (var side in listOfFacesToDraw)
-            {
-                Vector3[] vertices1 = new Vector3[0];
-                int[] triangles = new int[0];
-                var leftDownBack = (Vector3.left + Vector3.down + Vector3.back) / 2;
-                var rightDownBack = (Vector3.right + Vector3.down + Vector3.back) / 2;
-                var rightUpBack = (Vector3.right + Vector3.up + Vector3.back) / 2;
-                var leftUpBack = (Vector3.left + Vector3.up + Vector3.back) / 2;
-                var leftUpForward = (Vector3.left + Vector3.up + Vector3.forward) / 2;
-                var rightUpForward = (Vector3.right + Vector3.up + Vector3.forward) / 2;
-                var rightDownForward = (Vector3.right + Vector3.down + Vector3.forward) / 2;
-                var leftDownForward = (Vector3.left + Vector3.down + Vector3.forward) / 2;
-
-                switch (side.Key)
-                {
-                    case Voxel.Cubeside.Front:
-                        vertices1 = new[] {leftUpForward, rightUpForward, rightDownForward, leftDownForward};
-                        triangles = new[] {1, 0, 3, 1, 3, 2,};
-                        break;
-                    case Voxel.Cubeside.Back:
-                        vertices1 = new[] {leftDownBack, rightDownBack, rightUpBack, leftUpBack,};
-                        triangles = new[] {0, 2, 1, 0, 3, 2,};
-                        break;
-                    case Voxel.Cubeside.Up:
-                        vertices1 = new[] {rightUpBack, leftUpBack, leftUpForward, rightUpForward};
-                        triangles = new[] {0, 1, 2, 0, 2, 3,};
-                        break;
-                    case Voxel.Cubeside.Down:
-                        vertices1 = new[] {leftDownBack, rightDownBack, rightDownForward, leftDownForward};
-                        triangles = new[] {0, 2, 3, 0, 1, 2};
-                        break;
-                    case Voxel.Cubeside.Right:
-                        vertices1 = new[] {rightDownBack, rightUpBack, rightUpForward, rightDownForward};
-                        triangles = new[] {0, 1, 2, 0, 2, 3,};
-                        break;
-                    case Voxel.Cubeside.Left:
-                        vertices1 = new[] {leftDownBack, leftUpBack, leftUpForward, leftDownForward};
-                        triangles = new[] {0, 3, 2, 0, 2, 1,};
-                        break;
-
-                    default:
-                        continue;
-                    // throw new ArgumentOutOfRangeException(nameof(side.Key), side.Key, null);
-                }
-
-                if (vertices1.Length == 0)
-                    continue;
-                var normales = new []{side.Value,side.Value,side.Value,side.Value,};
-                vertices1 = vertices1.Select(v => v + (voxel.LocalIdentifier)).ToArray();
-                _voxelMeshDataPool[i].Vertices = vertices1;
-                _voxelMeshDataPool[i].Triangles = triangles;
-                _voxelMeshDataPool[i].Normals = normales;
-                _voxelMeshDataPool[i].Side = side.Key;
-                i++;
-            }
+            tasks.Add(Task.Run(() => GenerateVoxelFaces(voxel)));
         }
 
-        DrawMesh();
+        var tasksTask = Task.WhenAll(tasks);
+        while (!tasksTask.IsCompleted)
+            yield return null;
 
-        yield break;
+        DrawMesh();
     }
-    
-    
+
+    private void GenerateVoxelFaces(Voxel voxel)
+    {
+        var listOfFacesToDraw = voxel.GetListOfFacesToDraw().ToList();
+        foreach (var side in listOfFacesToDraw)
+        {
+            Vector3[] vertices;
+            int[] triangles;
+            
+            var leftDownBack = (Vector3.left + Vector3.down + Vector3.back) / 2;
+            var rightDownBack = (Vector3.right + Vector3.down + Vector3.back) / 2;
+            var rightUpBack = (Vector3.right + Vector3.up + Vector3.back) / 2;
+            var leftUpBack = (Vector3.left + Vector3.up + Vector3.back) / 2;
+            var leftUpForward = (Vector3.left + Vector3.up + Vector3.forward) / 2;
+            var rightUpForward = (Vector3.right + Vector3.up + Vector3.forward) / 2;
+            var rightDownForward = (Vector3.right + Vector3.down + Vector3.forward) / 2;
+            var leftDownForward = (Vector3.left + Vector3.down + Vector3.forward) / 2;
+
+            switch (side.Key)
+            {
+                case Voxel.Cubeside.Front:
+                    vertices = new[] {leftUpForward, rightUpForward, rightDownForward, leftDownForward};
+                    triangles = new[] {1, 0, 3, 1, 3, 2,};
+                    break;
+                case Voxel.Cubeside.Back:
+                    vertices = new[] {leftDownBack, rightDownBack, rightUpBack, leftUpBack,};
+                    triangles = new[] {0, 2, 1, 0, 3, 2,};
+                    break;
+                case Voxel.Cubeside.Up:
+                    vertices = new[] {rightUpBack, leftUpBack, leftUpForward, rightUpForward};
+                    triangles = new[] {0, 1, 2, 0, 2, 3,};
+                    break;
+                case Voxel.Cubeside.Down:
+                    vertices = new[] {leftDownBack, rightDownBack, rightDownForward, leftDownForward};
+                    triangles = new[] {0, 2, 3, 0, 1, 2};
+                    break;
+                case Voxel.Cubeside.Right:
+                    vertices = new[] {rightDownBack, rightUpBack, rightUpForward, rightDownForward};
+                    triangles = new[] {0, 1, 2, 0, 2, 3,};
+                    break;
+                case Voxel.Cubeside.Left:
+                    vertices = new[] {leftDownBack, leftUpBack, leftUpForward, leftDownForward};
+                    triangles = new[] {0, 3, 2, 0, 2, 1,};
+                    break;
+
+                default:
+                    continue;
+                // throw new ArgumentOutOfRangeException(nameof(side.Key), side.Key, null);
+            }
+
+            if (vertices.Length == 0)
+                continue;
+            var normales = new[] {side.Value, side.Value, side.Value, side.Value,};
+            var localIdentifier = voxel.LocalIdentifier.ToVector3Int();
+            vertices = vertices.Select(v => v + localIdentifier).ToArray();
+            lock (_voxelMeshDataPool)
+            {
+                var data = new VoxelMeshData
+                {
+                    Vertices = vertices,
+                    Triangles = triangles,
+                    Normals = normales,
+                    Side = side.Key
+                };
+                _voxelMeshDataPool.Add(data);
+            }
+        }
+    }
+
 
     private void DrawMesh()
     {
@@ -189,6 +205,7 @@ public class ChunkRenderer
         {
             triangles.AddRange(voxelMeshDataPool[i].Triangles.Select(triangle => triangle + (4 * i)));
         }
+
         var meshFilterMesh = new Mesh()
         {
             vertices = vertices,
@@ -196,11 +213,10 @@ public class ChunkRenderer
             normals = vector3s,
             uv = new Vector2[0]
         };
-        MeshUtility.Optimize(meshFilterMesh);
+        // MeshUtility.Optimize(meshFilterMesh);
         meshFilterMesh.RecalculateBounds();
         meshFilterMesh.RecalculateNormals();
         meshFilterMesh.RecalculateTangents();
         _meshFilter.mesh = meshFilterMesh;
-
     }
 }
