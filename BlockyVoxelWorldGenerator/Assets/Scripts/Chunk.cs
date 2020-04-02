@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Profiling;
 
@@ -195,6 +196,7 @@ public class ChunkRenderer
             normals = vector3s,
             uv = new Vector2[0]
         };
+        MeshUtility.Optimize(meshFilterMesh);
         meshFilterMesh.RecalculateBounds();
         meshFilterMesh.RecalculateNormals();
         meshFilterMesh.RecalculateTangents();

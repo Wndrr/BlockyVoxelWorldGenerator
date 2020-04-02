@@ -109,16 +109,16 @@ public class WorldGenerator : MonoBehaviour
         }
     }
 
-    private void OnDrawGizmos()
-    {
-        foreach (var chunkData in ChunksData)
-        {
-            foreach (var voxel in chunkData.Voxels)
-            {
-                Gizmos.DrawSphere(voxel.LocalIdentifier + chunkData.Identifier.ToVector3(), .2f);
-            }
-        }
-    }
+    // private void OnDrawGizmos()
+    // {
+    //     foreach (var chunkData in ChunksData)
+    //     {
+    //         foreach (var voxel in chunkData.Voxels)
+    //         {
+    //             Gizmos.DrawSphere(voxel.LocalIdentifier + chunkData.Identifier.ToVector3(), .2f);
+    //         }
+    //     }
+    // }
 
     // Update is called once per frame
     void Update()
