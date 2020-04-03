@@ -72,3 +72,5 @@ crashlytics-build.properties
 **/Temp/
 
 **/.idea/
+**/obj/
+**/Library/
