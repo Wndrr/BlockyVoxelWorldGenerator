@@ -1,13 +1,8 @@
-﻿using Unity.Collections;
+﻿using Components;
 using Unity.Entities;
 using Unity.Jobs;
-using Unity.Mathematics;
-using Unity.Rendering;
-using Unity.Transforms;
-using UnityEngine;
-using Random = System.Random;
 
-namespace DefaultNamespace
+namespace Systems
 {
     public class WorldSystem : JobComponentSystem
     {
@@ -25,13 +20,13 @@ namespace DefaultNamespace
             
             public void Execute(ref ChunkComponentData data)
             {
-                data.Voxels = new VoxelData[8];
-                for (var i = 0; i < data.Voxels.Length; i++)
-                {
-                    data.Voxels[i].Type = VoxelType.Stone;
-                }
+              //  data.Voxels = new VoxelData[8];
+               // for (var i = 0; i < data.Voxels.Length; i++)
+             //  {
+             //      data.Voxels[i].Type = 0;
+             //  }
 
-                data.NeedsRender = true;
+                //data.NeedsRender = true;
             }
         }
 
@@ -43,34 +38,10 @@ namespace DefaultNamespace
                 {
                     Chunk = data.Chunks[i]
                 };
-               job.Schedule(this, inputDeps);
+               job.Schedule(this, inputDeps).Complete();
             }
             
             return inputDeps;
-        }
-    }
-
-    public class CreateChunkMesh : ComponentSystem 
-    {
-        struct Data
-        {
-            public readonly int Length;
-            public RenderMesh RenderMesh;
-        }
-        
-        protected override void OnUpdate()
-        {
-            var material = new Material(Shader.Find("Diffuse"));
-            material.color = Color.magenta;
-            var entities = GetEntities<Data>();
-            GetEntit
-            for (var index = 0; index < entities.Length; index++)
-            {
-                var entity = entities[index];
-                entity.RenderMesh.material = material;
-            }
-
-            throw new System.NotImplementedException();
         }
     }
 }

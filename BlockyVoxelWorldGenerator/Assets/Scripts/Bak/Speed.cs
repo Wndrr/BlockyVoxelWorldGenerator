@@ -1,6 +1,6 @@
 ﻿using Unity.Entities;
 
-namespace DefaultNamespace
+namespace Bak
 {
     public struct Speed : IComponentData
     {

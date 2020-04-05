@@ -2,7 +2,7 @@
 using Unity.Jobs;
 using UnityEngine;
 
-namespace DefaultNamespace
+namespace Bak
 {
     public class PlayerInputSystem : JobComponentSystem    
     {
