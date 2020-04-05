@@ -39,17 +39,8 @@ public class Startup
         {
             _entityManager.CreateEntity(ChunkArchetype, chunks);
 
-            var gameObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            var mesh = gameObject.GetComponent<MeshFilter>().mesh;
-            Object.Destroy(gameObject);
             for (var i = 0; i < chunks.Length; i++)
             {
-                var material = new Material(Shader.Find("Diffuse"));
-                _entityManager.SetSharedComponentData(chunks[i], new RenderMesh()
-                {
-                    mesh = mesh,
-                    material = material
-                });
                 _entityManager.SetComponentData(chunks[i], new Position()
                 {
                     Value = new float3(i, 0, 0)
